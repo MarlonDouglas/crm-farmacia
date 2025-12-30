@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 
-// 1. INICIALIZAÇÃO SIMPLIFICADA (Igual ao do Vendedor)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -23,83 +22,78 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      console.log('Tentando logar com:', usuario)
-
-      // 2. BUSCA DIRETA NO BANCO (Sem depender de arquivos externos)
-      const { data: funcionarios, error: dbError } = await supabase
+      const { data: funcionario } = await supabase
         .from('funcionarios')
         .select('*')
-        .eq('usuario', usuario)
-        .eq('senha', senha) // No futuro podemos criptografar, para o MVP é texto puro
+        .eq('usuario', usuario.trim()) // Trim remove espaços acidentais
+        .eq('senha', senha.trim())
         .single()
 
-      if (dbError || !funcionarios) {
-        console.error('Erro ou não achou:', dbError)
+      if (!funcionario) {
         setError('Usuário ou senha incorretos')
         setLoading(false)
         return
       }
 
-      // 3. SE ACHOU, VERIFICA O CARGO
-      console.log('Login sucesso:', funcionarios)
-      
-      // Salva no navegador que o usuário está logado (Básico)
-      localStorage.setItem('crm_user', JSON.stringify(funcionarios))
+      // Salva sessão simples no navegador
+      localStorage.setItem('crm_user', JSON.stringify(funcionario))
 
-      const cargo = funcionarios.cargo
-
-      if (cargo === 'vendedor' || cargo === 'gerente') {
+      if (funcionario.cargo === 'vendedor' || funcionario.cargo === 'gerente') {
         router.push('/vendedor')
-      } else if (cargo === 'dona') {
+      } else if (funcionario.cargo === 'dona') {
         router.push('/dona')
       } else {
-        setError(`Cargo desconhecido: ${cargo}`)
+        setError('Cargo sem permissão de acesso')
       }
 
     } catch (err) {
-      console.error('Erro fatal:', err)
-      setError('Erro ao conectar no sistema')
+      setError('Erro de conexão. Verifique a internet.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="bg-white rounded-lg shadow-md w-full max-w-md p-8">
-        <h1 className="text-2xl font-bold text-center mb-6 text-blue-600">CRM Farmácia</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-200 px-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-8 border-t-8 border-teal-600">
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-extrabold text-teal-700 uppercase tracking-tight">Farmácia CRM</h1>
+          <p className="text-gray-800 font-medium mt-2">Sistema Interno</p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-base font-bold text-black mb-2 uppercase">
               Usuário
             </label>
             <input
               type="text"
               value={usuario}
               onChange={(e) => setUsuario(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="ex: joao"
-              required
+              className="w-full px-4 py-4 border-2 border-gray-400 rounded-lg focus:outline-none focus:border-teal-600 text-black font-bold text-lg placeholder-gray-500"
+              placeholder="Digite seu usuário"
               autoFocus
+              required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-base font-bold text-black mb-2 uppercase">
               Senha
             </label>
             <input
               type="password"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-4 border-2 border-gray-400 rounded-lg focus:outline-none focus:border-teal-600 text-black font-bold text-lg"
+              placeholder="••••••"
               required
             />
           </div>
 
           {error && (
-            <div className="text-red-600 text-sm text-center bg-red-50 p-2 rounded border border-red-100">
+            <div className="p-4 bg-red-100 text-red-900 rounded-lg text-center font-bold border-2 border-red-200">
               {error}
             </div>
           )}
@@ -107,15 +101,11 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors"
+            className="w-full py-4 bg-teal-700 text-white font-extrabold rounded-lg hover:bg-teal-800 transition-colors shadow-lg text-xl uppercase tracking-wider"
           >
-            {loading ? 'Entrando...' : 'Entrar'}
+            {loading ? 'ENTRANDO...' : 'ACESSAR'}
           </button>
         </form>
-        
-        <p className="text-center text-xs text-gray-400 mt-4">
-          Sistema Interno - Versão 1.0
-        </p>
       </div>
     </div>
   )
