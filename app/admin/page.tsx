@@ -9,7 +9,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
-
+  // Atualização Forçada Vercel
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null)
   const [stats, setStats] = useState({ vendasHoje: 0, faturamentoHoje: 0, perdidas: 0 })
