@@ -3,152 +3,157 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
-import { LogOut, CheckCircle, Clock, DollarSign, Image as ImageIcon, History, Package, CreditCard, Banknote, Paperclip } from 'lucide-react'
+import { LogOut, PieChart, TrendingUp, DollarSign, Users, AlertCircle } from 'lucide-react'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-export default function DonaPage() {
-  const [pendentes, setPendentes] = useState<any[]>([])
-  const [emAndamento, setEmAndamento] = useState<any[]>([])
-  const [concluidos, setConcluidos] = useState<any[]>([])
+export default function AdminPage() {
+  const [user, setUser] = useState<any>(null)
+  const [stats, setStats] = useState({ vendasHoje: 0, faturamentoHoje: 0, perdidas: 0 })
+  const [pendentesPix, setPendentesPix] = useState<any[]>([])
   const router = useRouter()
 
   useEffect(() => {
-    carregarTudo()
-    const intervalo = setInterval(carregarTudo, 5000)
-    return () => clearInterval(intervalo)
+    // 1. Verifica quem está logado
+    const session = localStorage.getItem('crm_user')
+    if (!session) {
+      router.push('/')
+      return
+    }
+    const usuarioLogado = JSON.parse(session)
+    setUser(usuarioLogado)
+
+    // 2. Carrega dados
+    carregarDados()
   }, [])
 
-  async function carregarTudo() {
-    const { data } = await supabase
+  async function carregarDados() {
+    // Buscar Pix Pendentes (Para Dona/Gerente)
+    const { data: pix } = await supabase
       .from('atendimentos')
-      .select('*, cliente:clientes(nome, telefone)')
-      .order('data_inicio', { ascending: false })
-      .limit(50)
+      .select('*, cliente:clientes(nome)')
+      .eq('status', 'aguardando_pix')
+    
+    if (pix) setPendentesPix(pix)
 
-    if (data) {
-      setPendentes(data.filter(i => i.status === 'aguardando_pix'))
-      setEmAndamento(data.filter(i => ['em_separacao', 'aguardando_motoboy', 'em_rota'].includes(i.status)))
-      setConcluidos(data.filter(i => i.status === 'concluido'))
+    // Buscar Estatísticas (Para Marketing/Proprietária)
+    const hoje = new Date().toISOString().split('T')[0]
+    
+    // Vendas Hoje
+    const { data: vendas } = await supabase
+      .from('atendimentos')
+      .select('valor_total, status')
+      .gte('data_inicio', hoje) // A partir de hoje 00:00
+
+    if (vendas) {
+      const faturamento = vendas
+        .filter(v => v.status !== 'cancelado')
+        .reduce((acc, curr) => acc + (curr.valor_total || 0), 0)
+      
+      const perdidas = vendas.filter(v => v.status === 'cancelado').length
+
+      setStats({
+        vendasHoje: vendas.length,
+        faturamentoHoje: faturamento,
+        perdidas: perdidas
+      })
     }
   }
 
   async function aprovarPix(id: string) {
-    if (!confirm('Confirmar recebimento?')) return
+    if(!confirm('Confirmar recebimento?')) return
     await supabase.from('atendimentos').update({ status: 'em_separacao', data_aprovacao_pix: new Date().toISOString() }).eq('id', id)
-    carregarTudo()
+    carregarDados() // Recarrega a tela
   }
 
-  const IconePagamento = ({ tipo }: { tipo: string }) => {
-    if (!tipo) return <DollarSign size={14} className="text-gray-500" />
-    if (tipo.includes('Pix')) return <div className="flex items-center gap-1 text-teal-300 font-bold uppercase text-xs"><DollarSign size={14}/> Pix</div>
-    if (tipo.includes('Cartão')) return <div className="flex items-center gap-1 text-blue-300 font-bold uppercase text-xs"><CreditCard size={14}/> Cartão</div>
-    if (tipo.includes('Dinheiro')) return <div className="flex items-center gap-1 text-green-300 font-bold uppercase text-xs"><Banknote size={14}/> Dinheiro</div>
-    return <span className="text-xs text-gray-300">{tipo}</span>
-  }
-
-  const getLinkComprovante = (texto: string) => {
-    if(!texto) return null
-    const partes = texto.split(' - ')
-    if (partes.length > 1 && partes[1].startsWith('http')) return partes[1]
-    return null
-  }
-
-  const renderPagamentoHistorico = (texto: string) => {
-    if (!texto) return 'S/ Info'
-    if (texto.includes('Pix Online')) return 'Pix Online'
-    return texto
-  }
+  if (!user) return <div className="p-10 text-center">Carregando Painel...</div>
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 pb-20">
-      <header className="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
-        <div><h1 className="text-2xl font-black text-green-400 uppercase tracking-widest">Financeiro</h1><p className="text-sm text-gray-400 font-medium">Torre de Controle</p></div>
-        <button onClick={() => router.push('/')} className="p-3 bg-gray-800 rounded-lg hover:bg-gray-700 border border-gray-600"><LogOut size={20}/></button>
+    <div className="min-h-screen bg-gray-50 p-6">
+      
+      {/* CABEÇALHO */}
+      <header className="flex justify-between items-center mb-8 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+        <div>
+          <h1 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Painel {user.cargo}</h1>
+          <p className="text-sm text-gray-500 font-medium">Bem-vindo, {user.nome}</p>
+        </div>
+        <button onClick={() => router.push('/')} className="flex items-center gap-2 text-red-600 font-bold hover:bg-red-50 px-4 py-2 rounded-lg transition">
+          <LogOut size={18}/> Sair
+        </button>
       </header>
 
-      {/* 1. URGENTE */}
-      {pendentes.length > 0 && (
-        <div className="mb-10">
-          <h2 className="text-base font-black text-yellow-400 mb-3 uppercase tracking-wider flex items-center gap-2 border-l-4 border-yellow-500 pl-2">
-            <Clock size={20}/> Aprovação Necessária ({pendentes.length})
-          </h2>
-          <div className="space-y-4">
-            {pendentes.map((item) => {
-              const link = getLinkComprovante(item.forma_pagamento)
-              return (
-                <div key={item.id} className="bg-gray-800 p-5 rounded-xl border-2 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.2)]">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-extrabold text-xl text-white">{item.cliente?.nome}</h3>
-                    <span className="text-xs bg-yellow-900 text-yellow-100 px-3 py-1 rounded-full font-bold uppercase tracking-wider">Aguardando</span>
+      {/* DASHBOARD (Para Todos: Marketing e Dona) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase">Faturamento Hoje</p>
+              <h3 className="text-3xl font-black text-gray-900 mt-1">R$ {stats.faturamentoHoje.toFixed(2)}</h3>
+            </div>
+            <div className="p-2 bg-green-100 rounded-lg text-green-700"><DollarSign size={24}/></div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+           <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase">Total Pedidos</p>
+              <h3 className="text-3xl font-black text-gray-900 mt-1">{stats.vendasHoje}</h3>
+            </div>
+            <div className="p-2 bg-blue-100 rounded-lg text-blue-700"><TrendingUp size={24}/></div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-red-500">
+           <div className="flex justify-between items-start">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase">Vendas Perdidas</p>
+              <h3 className="text-3xl font-black text-gray-900 mt-1">{stats.perdidas}</h3>
+            </div>
+            <div className="p-2 bg-red-100 rounded-lg text-red-700"><AlertCircle size={24}/></div>
+          </div>
+           <p className="text-xs text-red-400 mt-2 font-bold cursor-pointer hover:underline">Ver Motivos &rarr;</p>
+        </div>
+      </div>
+
+      {/* ÁREA DE OPERAÇÃO (Só aparece se tiver Pix Pendente) */}
+      {pendentesPix.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-black text-gray-800 mb-4 flex items-center gap-2"><AlertCircle className="text-yellow-500"/> Aprovação Necessária ({pendentesPix.length})</h2>
+          <div className="grid gap-3">
+            {pendentesPix.map(pix => (
+               <div key={pix.id} className="bg-white p-4 rounded-xl border border-yellow-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+                  <div className="text-center md:text-left">
+                    <p className="font-bold text-gray-900 text-lg">{pix.cliente?.nome}</p>
+                    <p className="text-green-600 font-black text-xl">R$ {pix.valor_total}</p>
                   </div>
-                  <div className="bg-black/40 p-4 rounded-lg mb-4 flex justify-between items-center border border-gray-700">
-                     <span className="text-gray-400 font-bold uppercase text-xs">Valor:</span>
-                     <span className="text-3xl font-black text-green-400">R$ {item.valor_total}</span>
+                  <div className="flex gap-2 w-full md:w-auto">
+                    {pix.comprovante_pix_url && pix.comprovante_pix_url.includes('http') ? (
+                       <a href={pix.comprovante_pix_url.split(' - ')[1]} target="_blank" className="flex-1 px-4 py-2 bg-blue-50 text-blue-700 font-bold rounded-lg border border-blue-200 text-center hover:bg-blue-100">Ver Comprovante</a>
+                    ) : (
+                       <span className="flex-1 px-4 py-2 bg-gray-100 text-gray-400 font-bold rounded-lg text-center">Sem Foto</span>
+                    )}
+                    <button onClick={() => aprovarPix(pix.id)} className="flex-[2] px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 shadow-lg hover:shadow-xl transition">APROVAR ✅</button>
                   </div>
-                  <div className="flex gap-3">
-                      {link ? (
-                        <a href={link} target="_blank" className="flex-1 bg-blue-600 hover:bg-blue-500 py-3 rounded-lg flex justify-center items-center gap-2 text-sm font-black uppercase"><ImageIcon size={18}/> Ver Foto</a>
-                      ) : (
-                        <div className="flex-1 bg-gray-700 py-3 rounded-lg flex justify-center text-sm font-bold text-gray-500 uppercase cursor-not-allowed">Sem Foto</div>
-                      )}
-                      <button onClick={() => aprovarPix(item.id)} className="flex-[2] bg-green-600 hover:bg-green-500 py-3 rounded-lg flex justify-center items-center gap-2 font-black uppercase text-white shadow-lg"><CheckCircle size={20}/> Aprovar Pix</button>
-                  </div>
-                </div>
-              )
-            })}
+               </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* 2. OPERAÇÃO */}
-      <h2 className="text-sm font-bold text-blue-400 mb-3 uppercase tracking-wider flex items-center gap-2 pt-6 border-t border-gray-800">
-        <Package size={16}/> Em Operação ({emAndamento.length})
-      </h2>
-      <div className="space-y-3 mb-10">
-        {emAndamento.length === 0 && <p className="text-gray-600 text-sm italic py-4 text-center">Tudo calmo na operação.</p>}
-        {emAndamento.map((item) => (
-          <div key={item.id} className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex justify-between items-center hover:bg-gray-750 transition">
-            <div>
-              <p className="font-bold text-white text-lg">{item.cliente?.nome}</p>
-              <div className="flex flex-col mt-1">
-                <IconePagamento tipo={item.forma_pagamento} />
-                {item.troco_para > 0 && <span className="text-red-400 font-black text-xs mt-1 uppercase">⚠️ Troco p/ {item.troco_para}</span>}
-              </div>
-            </div>
-            <div className="text-right">
-              <span className={`text-[10px] px-2 py-1 rounded font-black uppercase mb-1 block
-                ${item.status === 'em_separacao' ? 'bg-purple-900 text-purple-200' : 
-                  item.status === 'aguardando_motoboy' ? 'bg-indigo-900 text-indigo-200' : 'bg-orange-900 text-orange-200'}`}>
-                {item.status.replace('_', ' ')}
-              </span>
-              <p className="font-black text-white text-lg">R$ {item.valor_total}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* ÁREA DE MARKETING (Só aparece para Marketing ou Proprietária) */}
+      {(user.cargo === 'marketing' || user.cargo === 'proprietaria') && (
+        <div className="bg-white p-6 rounded-xl border border-gray-200">
+           <h2 className="text-lg font-black text-gray-800 mb-4 flex items-center gap-2"><PieChart className="text-purple-600"/> Inteligência de Vendas</h2>
+           <div className="h-40 bg-gray-50 rounded border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 font-bold">
+              Gráfico de Bairros (Em breve)
+           </div>
+        </div>
+      )}
 
-      {/* 3. FINALIZADOS */}
-      <h2 className="text-sm font-bold text-gray-500 mb-3 uppercase tracking-wider flex items-center gap-2 pt-6 border-t border-gray-800">
-        <History size={16}/> Vendas Finalizadas
-      </h2>
-      <div className="space-y-2 opacity-60 hover:opacity-100 transition duration-300">
-        {concluidos.map((item) => (
-          <div key={item.id} className="bg-gray-800 p-3 rounded border border-gray-700 flex justify-between items-center text-sm">
-            <div>
-              <p className="text-gray-300 font-bold">{item.cliente?.nome}</p>
-              <div className="flex items-center gap-2">
-                 <p className="text-[10px] text-gray-400 uppercase font-medium">{renderPagamentoHistorico(item.forma_pagamento)}</p>
-                 {item.forma_pagamento?.includes('http') && <Paperclip size={12} className="text-blue-400"/>}
-              </div>
-            </div>
-            <p className="font-black text-green-500">R$ {item.valor_total}</p>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
