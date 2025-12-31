@@ -143,6 +143,19 @@ export default function VendedorPage() {
     mostrarToast('Texto copiado!')
   }
 
+  const formatarStatus = (status: string): string => {
+    const statusMap: Record<string, string> = {
+      'novo': 'Novo',
+      'em_negociacao': 'Em Negociação',
+      'aguardando_pix': 'Aguardando PIX',
+      'em_separacao': 'Em Separação',
+      'aguardando_motoboy': 'Esp. Motoboy',
+      'em_rota': 'Em Rota',
+      'concluido': 'Concluído'
+    }
+    return statusMap[status] || status.replace('_', ' ')
+  }
+
   const renderPagamento = (texto: string) => {
     if (!texto) return '-'
     if (texto.includes('http')) {
@@ -239,7 +252,7 @@ export default function VendedorPage() {
                   <h3 className="font-extrabold text-xl text-black">{item.cliente?.nome || 'Cliente'}</h3>
                   <p className="text-lg font-bold text-black mt-1">📱 {item.cliente?.telefone}</p>
                 </div>
-                <span className="text-xs font-black uppercase px-3 py-1 bg-gray-200 rounded-full text-black border border-gray-400">{item.status.replace('_', ' ')}</span>
+                <span className="text-xs font-black uppercase px-3 py-1 bg-gray-200 rounded-full text-black border border-gray-400">{formatarStatus(item.status)}</span>
               </div>
 
               {item.valor_total > 0 && (
