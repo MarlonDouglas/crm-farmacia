@@ -1,91 +1,45 @@
-# CRM Farmácia
+# 🚀 CRM Farmácia - WhatsApp Edition
 
-Sistema de CRM desenvolvido para farmácia, otimizado para uso em desktop (sidebar ao lado do WhatsApp Web) e mobile.
+Sistema de gestão de relacionamento com cliente (CRM) com interface inspirada no **WhatsApp Web (Dark Mode)**, projetado para rodar na sidebar lateral do navegador. Unifica atendimento ágil e inteligência de dados robusta.
 
-## 🚀 Tecnologias
+## 🛠️ Stack Tecnológico
+- **Frontend:** Next.js 16 (App Router), React, Tailwind CSS
+- **Ícones:** Lucide React
+- **Gráficos:** Recharts
+- **Backend/DB:** Supabase (PostgreSQL)
 
-- **Next.js 16** - Framework React
-- **TypeScript** - Tipagem estática
-- **Tailwind CSS** - Estilização
-- **Lucide React** - Ícones
-- **Supabase** - Backend e banco de dados
+## 📂 Estrutura do Projeto
 
-## 📋 Estrutura de Usuários
+### `/app/vendedor` (Interface Operacional)
+- **Design:** Cópia fiel do WhatsApp Web Dark (`#111b21`, `#202c33`, `#00a884`).
+- **Função:** Onde o vendedor passa 100% do tempo.
+- **Features:** - Kanban Vertical (Chat List).
+  - Cronômetros de SLA coloridos.
+  - Modais de fechamento rápido.
+  - Atalhos de teclado (Enter flow).
 
-### Vendedor
-- Acesso via Desktop
-- Registra novos atendimentos
-- Gerencia status de vendas
-- Copia scripts de mensagem para WhatsApp
+### `/app/dashboard` (Inteligência & Admin)
+- **Função:** Visão da Dona/Gerência.
+- **Features:**
+  - Filtros temporais robustos (Hoje / Mês / Ano).
+  - KPIs Financeiros (Faturamento, Ticket Médio).
+  - Análise de Churn (Gráfico de Pizza com motivos de perda).
+  - Mapa de Calor de horários (Para alocação de equipe).
 
-### Dona
-- Acesso via Mobile
-- Visualiza pedidos aguardando confirmação de PIX
-- Aprova pagamentos
-- Interface focada em aprovações financeiras
+## 🗄️ Banco de Dados (Supabase)
 
-## 🔄 Fluxo de Status
+A estrutura atual suporta histórico de longo prazo (anos). Não delete registros antigos; o sistema usa timestamps para filtrar estatísticas.
 
-1. **Novo** → Atendimento recém-criado
-2. **Em Negociação** → Cliente em negociação
-3. **Aguardando PIX** → Aguardando confirmação de pagamento
-4. **Em Separação** → Produtos sendo separados
-5. **Aguardando Motoboy** → Aguardando motoboy para entrega
-6. **Em Rota** → Produto em trânsito
-7. **Concluído** → Entrega finalizada
+**Tabelas Principais:**
+- `atendimentos`: Núcleo do sistema. Contém `data_inicio`, `data_fim`, `valor_total`, `status`.
+- `clientes`: Dados demográficos (`bairro`, `nome`, `telefone`).
 
-## 🗄️ Estrutura do Banco de Dados
+## 🚀 Como Rodar
 
-O projeto utiliza as seguintes tabelas no Supabase:
-
-- `funcionarios` - Usuários do sistema (vendedor/dona)
-- `clientes` - Cadastro de clientes
-- `atendimentos` - Registro de atendimentos/vendas
-- `scripts_msg` - Scripts de mensagem para WhatsApp
-
-## ⚙️ Configuração
-
-1. Clone o repositório
-2. Instale as dependências:
-```bash
-npm install
-```
-
-3. Configure as variáveis de ambiente. Crie um arquivo `.env.local`:
-```env
-NEXT_PUBLIC_SUPABASE_URL=sua_url_do_supabase
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
-```
-
-4. Execute o servidor de desenvolvimento:
-```bash
-npm run dev
-```
-
-5. Acesse [http://localhost:3000](http://localhost:3000)
-
-## 📱 Funcionalidades
-
-### Painel do Vendedor
-- ✅ Criar novo atendimento (modal com telefone e nome)
-- ✅ Visualizar atendimentos em Kanban vertical
-- ✅ Alterar status rapidamente
-- ✅ Copiar scripts de mensagem para área de transferência
-- ✅ Layout compacto otimizado para sidebar
-
-### Painel da Dona
-- ✅ Visualizar apenas pedidos aguardando PIX
-- ✅ Confirmar pagamento com um clique
-- ✅ Interface mobile-first
-- ✅ Atualização automática a cada 10 segundos
-
-## 🔐 Autenticação
-
-O sistema utiliza autenticação simples via localStorage. Os usuários são autenticados através da tabela `funcionarios` com usuário e senha.
-
-## 📝 Notas
-
-- O sistema foi projetado para uso em janela estreita (sidebar) ao lado do WhatsApp Web
-- A interface do vendedor é otimizada para desktop
-- A interface da dona é mobile-first para uso em dispositivos móveis
-- Todos os scripts de mensagem podem ser copiados com um clique para facilitar o atendimento no WhatsApp
+1. Clone o repositório.
+2. Configure `.env.local` com suas chaves do Supabase.
+3. Instale: `npm install`
+4. Rode: `npm run dev`
+5. Acesse:
+   - Vendedor: `http://localhost:3000/vendedor`
+   - Admin: `http://localhost:3000/dashboard`
